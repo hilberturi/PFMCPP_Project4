@@ -36,8 +36,8 @@ struct Temporary
      revise these conversion functions to read/write to 'v' here
      hint: what qualifier do read-only functions usually have?
      */
-    operator ___() { /* read-only function */ }
-    operator ___() { /* read/write function */ }
+    operator NumericType() const { return v; } // read-only access
+    operator NumericType& *() { return v; } // read-write access
 private:
     static int counter;
     NumericType v;
@@ -47,6 +47,8 @@ private:
  2) add the definition of Temporary::counter here, which is a static variable and must be defined outside of the class.
     Remember the rules about how to define a Template member variable/function outside of the class.
 */
+
+static int Temporary::counter {};
 
 /*
  3) You'll need to template your overloaded math operator functions in your Templated Class from Ch5 p04
