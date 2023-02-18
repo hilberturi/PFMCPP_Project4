@@ -24,6 +24,8 @@ Create a branch named Part8
  */
 
 #include <typeinfo>
+#include <iostream>
+
 template<typename NumericType>
 struct Temporary
 {
@@ -37,7 +39,7 @@ struct Temporary
      hint: what qualifier do read-only functions usually have?
      */
     operator NumericType() const { return v; } // read-only access
-    operator NumericType& *() { return v; } // read-write access
+    NumericType& operator*() { return v; } // read-write access
 private:
     static int counter;
     NumericType v;
@@ -48,12 +50,15 @@ private:
     Remember the rules about how to define a Template member variable/function outside of the class.
 */
 
-static int Temporary::counter {};
+template<typename NumericType>
+int Temporary<NumericType>::counter {};
 
 /*
  3) You'll need to template your overloaded math operator functions in your Templated Class from Ch5 p04
     use static_cast to convert whatever type is passed in to your template's NumericType before performing the +=, -=, etc.  here's an example implementation:
  */
+
+/*
 namespace example
 {
 template<typename NumericType>
@@ -69,6 +74,7 @@ struct Numeric
     //snip
 };
 }
+*/
 
 /*
  4) remove your specialized <double> template of your Numeric<T> class from the previous task (ch5 p04)
@@ -152,29 +158,39 @@ struct Numeric
 {
     using Type = NumericType;
 
-    explicit Numeric (Type initValue) : value(new Type (initValue)) {}
+    explicit Numeric (Type initValue) : value(initValue) {}
     ~Numeric() {}
 
-    Numeric& operator+= (Type rhs)
-    {
-        *value += rhs; 
-        return *this;
-    }
-    
-    Numeric& operator-= (Type rhs)
-    {
-        *value -= rhs;
-        return *this;
-    }
-    
-    Numeric& operator*= (Type rhs)
-    {
-        *value *= rhs;
+    template<typename RhsType>
+    Numeric& operator=(RhsType valueToSet) 
+    { 
+        *value = static_cast<Type>(valueToSet); 
         return *this;
     }
 
     template<typename RhsType>
-    Numeric& operator/= (RhsType rhs)
+    Numeric& operator+=(const RhsType& rhs) 
+    { 
+        *value += static_cast<Type>(rhs); 
+        return *this; 
+    }
+    
+    template<typename RhsType>
+    Numeric& operator-=(const RhsType& rhs) 
+    { 
+        *value -= static_cast<Type>(rhs); 
+        return *this; 
+    }
+    
+    template<typename RhsType>
+    Numeric& operator*=(const RhsType& rhs) 
+    { 
+        *value *= static_cast<Type>(rhs); 
+        return *this; 
+    }
+
+    template<typename RhsType>
+    Numeric& operator/= (const RhsType& rhs)
     {
         if constexpr (std::is_same<Type, int>::value)
         {
@@ -194,7 +210,7 @@ struct Numeric
                 return *this;                    
             }
         }
-        else if (std::abs(rhs) < std::numeric_limits<Type>::epsilon())
+        else if (std::abs(rhs) < std::numeric_limits<RhsType>::epsilon())
         {
             std::cout << "warning: floating point division by zero!"
                       << std::endl;
@@ -203,13 +219,15 @@ struct Numeric
         return *this;            
     }
 
-    template<typename ArgType>
-    Numeric& pow(const ArgType& arg)
+    template<typename RhsType>
+    Numeric& pow(const RhsType& rhs)
     {
-        return powInternal (static_cast<Type> (arg));
+        *value = static_cast<Type> (std::pow (*value, static_cast<Type> (rhs)));
+        return *this;
     }
     
-    operator Type() const { return *value; }
+    operator Type() const { return value; }
+    operator Temporary<Type>&() const { return value; }
 
     template<typename Callable>
     Numeric& apply (Callable callable)
@@ -220,14 +238,7 @@ struct Numeric
 
 private:
 
-    Numeric& powInternal (Type arg)
-    {   
-        *value = static_cast<Type> (std::pow (*value, arg));
-        return *this;
-    }
-    
-
-    std::unique_ptr<Type> value;
+    Temporary<Type> value;
 };
 
 /////////////////////// Definition of Point type
@@ -390,7 +401,7 @@ void part4()
 }
 
 template<typename Type>
-void myNumericFreeFunct (std::unique_ptr<Type>& arg)
+void myNumericFreeFunct (Temporary<Type>& arg)
 {
     *arg += static_cast<Type> (7);
 }
@@ -435,6 +446,7 @@ void part6()
 }
 */
 
+/*
 void part7()
 {
     Numeric<float> ft3(3.0f);
@@ -495,6 +507,7 @@ void part7()
     std::cout << "it3 after: " << it3 << std::endl;
     std::cout << "---------------------\n" << std::endl;    
 }
+*/
 
 /*
  MAKE SURE YOU ARE NOT ON THE MASTER BRANCH
@@ -509,6 +522,13 @@ void part7()
 
  Wait for my code review.
  */
+
+
+template<typename Type>
+Type cube (Type arg) 
+{
+    return arg * arg * arg;
+}
 
 int main()
 {
