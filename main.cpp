@@ -532,8 +532,8 @@ void part7()
 template<typename Type>
 Type cube (std::unique_ptr<Type>& arg) 
 {
-    auto& v = *arg;
-    v *= v * v;
+    auto v = *arg;
+    *arg = v * v * v;
     return v;
 }
 
