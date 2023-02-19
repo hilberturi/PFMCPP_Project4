@@ -39,7 +39,7 @@ struct Temporary
      hint: what qualifier do read-only functions usually have?
      */
     operator NumericType() const { return v; } // read-only access
-    NumericType& operator*() { return v; } // read-write access
+    operator NumericType&() { return v; } // read-write access
 private:
     static int counter;
     NumericType v;
@@ -156,43 +156,44 @@ struct HeapA
 template<typename NumericType>
 struct Numeric
 {
-    using Type = NumericType;
+    using Type = Temporary<NumericType>;
 
-    explicit Numeric (Type initValue) : value(initValue) {}
+    template<typename ArgType>
+    explicit Numeric (ArgType initValue) : value(std::make_unique<Type>(static_cast<NumericType>(initValue))) {}
     ~Numeric() {}
 
     template<typename RhsType>
     Numeric& operator=(RhsType valueToSet) 
     { 
-        *value = static_cast<Type>(valueToSet); 
+        *value = static_cast<NumericType>(valueToSet); 
         return *this;
     }
 
     template<typename RhsType>
     Numeric& operator+=(const RhsType& rhs) 
     { 
-        *value += static_cast<Type>(rhs); 
+        *value += static_cast<NumericType>(rhs); 
         return *this; 
     }
     
     template<typename RhsType>
     Numeric& operator-=(const RhsType& rhs) 
     { 
-        *value -= static_cast<Type>(rhs); 
+        *value -= static_cast<NumericType>(rhs); 
         return *this; 
     }
     
     template<typename RhsType>
     Numeric& operator*=(const RhsType& rhs) 
     { 
-        *value *= static_cast<Type>(rhs); 
+        *value *= static_cast<NumericType>(rhs); 
         return *this; 
     }
 
     template<typename RhsType>
     Numeric& operator/= (const RhsType& rhs)
     {
-        if constexpr (std::is_same<Type, int>::value)
+        if constexpr (std::is_same<NumericType, int>::value)
         {
             if constexpr (std::is_same<RhsType, int>::value)
             {
@@ -215,19 +216,18 @@ struct Numeric
             std::cout << "warning: floating point division by zero!"
                       << std::endl;
         }
-        *value /= static_cast<Type>(rhs);
+        *value /= static_cast<NumericType>(rhs);
         return *this;            
     }
 
     template<typename RhsType>
     Numeric& pow(const RhsType& rhs)
     {
-        *value = static_cast<Type> (std::pow (*value, static_cast<Type> (rhs)));
+        *value = static_cast<NumericType> (std::pow (static_cast<NumericType> (*value), static_cast<NumericType> (rhs)));
         return *this;
     }
     
-    operator Type() const { return value; }
-    operator Temporary<Type>&() const { return value; }
+    operator NumericType() const { return *value; }
 
     template<typename Callable>
     Numeric& apply (Callable callable)
@@ -238,7 +238,7 @@ struct Numeric
 
 private:
 
-    Temporary<Type> value;
+    std::unique_ptr<Type> value;
 };
 
 /////////////////////// Definition of Point type
@@ -401,7 +401,7 @@ void part4()
 }
 
 template<typename Type>
-void myNumericFreeFunct (Temporary<Type>& arg)
+void myNumericFreeFunct (std::unique_ptr<Type>& arg)
 {
     *arg += static_cast<Type> (7);
 }
@@ -446,7 +446,6 @@ void part6()
 }
 */
 
-/*
 void part7()
 {
     Numeric<float> ft3(3.0f);
@@ -455,7 +454,6 @@ void part7()
     
     std::cout << "Calling Numeric<float>::apply() using a lambda (adds 7.0f) and Numeric<float> as return type:" << std::endl;
     std::cout << "ft3 before: " << ft3 << std::endl;
-
     {
         using Type = decltype(ft3)::Type;
         ft3.apply( [&ft3](std::unique_ptr<Type>& arg) -> Numeric<float>& { *arg += 7.0f; return ft3; } );
@@ -464,7 +462,10 @@ void part7()
     std::cout << "ft3 after: " << ft3 << std::endl;
     std::cout << "Calling Numeric<float>::apply() twice using a free function (adds 7.0f) and void as return type:" << std::endl;
     std::cout << "ft3 before: " << ft3 << std::endl;
-    ft3.apply(myNumericFreeFunct).apply(myNumericFreeFunct);
+    {
+        using Type = decltype(ft3)::Type;
+        ft3.apply(myNumericFreeFunct<Type>).apply(myNumericFreeFunct<Type>);
+    }
     std::cout << "ft3 after: " << ft3 << std::endl;
     std::cout << "---------------------\n" << std::endl;
 
@@ -489,13 +490,15 @@ void part7()
     std::cout << "dt3 after: " << dt3 << std::endl;
     std::cout << "Calling Numeric<double>::apply() twice using a free function (adds 7.0) and void as return type:" << std::endl;
     std::cout << "dt3 before: " << dt3 << std::endl;
-    dt3.apply(myNumericFreeFunct<double>).apply(myNumericFreeFunct<double>); // This calls the templated apply fcn
+    {
+        using Type = decltype(dt3)::Type;
+        dt3.apply(myNumericFreeFunct<Type>).apply(myNumericFreeFunct<Type>); // This calls the templated apply fcn
+    }
     std::cout << "dt3 after: " << dt3 << std::endl;
     std::cout << "---------------------\n" << std::endl;
 
     std::cout << "Calling Numeric<int>::apply() using a lambda (adds 5) and Numeric<int> as return type:" << std::endl;
     std::cout << "it3 before: " << it3 << std::endl;
-
     {
         using Type = decltype(it3)::Type;
         it3.apply( [&it3](std::unique_ptr<Type>& arg) -> Numeric<int>& { *arg += 5; return it3;} );
@@ -503,11 +506,13 @@ void part7()
     std::cout << "it3 after: " << it3 << std::endl;
     std::cout << "Calling Numeric<int>::apply() twice using a free function (adds 7) and void as return type:" << std::endl;
     std::cout << "it3 before: " << it3 << std::endl;
-    it3.apply(myNumericFreeFunct).apply(myNumericFreeFunct);
+    {
+        using Type = decltype(it3)::Type;
+        it3.apply(myNumericFreeFunct<Type>).apply(myNumericFreeFunct<Type>);
+    }
     std::cout << "it3 after: " << it3 << std::endl;
     std::cout << "---------------------\n" << std::endl;    
 }
-*/
 
 /*
  MAKE SURE YOU ARE NOT ON THE MASTER BRANCH
@@ -525,9 +530,11 @@ void part7()
 
 
 template<typename Type>
-Type cube (Type arg) 
+Type cube (std::unique_ptr<Type>& arg) 
 {
-    return arg * arg * arg;
+    auto& v = *arg;
+    v *= v * v;
+    return v;
 }
 
 int main()
@@ -535,7 +542,7 @@ int main()
     Numeric<float> f(0.1f);
     Numeric<int> i(3);
     Numeric<double> d(4.2);
-    
+
     f += 2.f;
     f -= i;
     f *= d;
