@@ -525,11 +525,10 @@ void part7()
 
 
 template<typename Type>
-Type cube (std::unique_ptr<Type>& arg) 
+void cube (std::unique_ptr<Type>& arg) 
 {
     auto v = std::move (*arg);
     *arg = v * v * v;
-    return std::move (v);
 }
 
 int main()
