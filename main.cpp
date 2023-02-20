@@ -12,7 +12,7 @@ Create a branch named Part9
  
  2) move these macros after the JUCE_LEAK_DETECTOR macro :
  */
-
+/*
 #define JUCE_DECLARE_NON_COPYABLE(className) \
             className (const className&) = delete;\
             className& operator= (const className&) = delete;
@@ -20,6 +20,7 @@ Create a branch named Part9
 #define JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(className) \
             JUCE_DECLARE_NON_COPYABLE(className) \
             JUCE_LEAK_DETECTOR(className)
+*/
 
 /*
  3) add JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Temporary) to the end of the  Temporary<> struct
@@ -75,6 +76,7 @@ Use a service like https://www.diffchecker.com/diff to compare your output.
 #include <iostream>
 #include <cmath>
 #include <functional>
+#include "LeakedObjectDetector.h"
 
 template<typename NumericType>
 struct Temporary
@@ -83,6 +85,17 @@ struct Temporary
     {
         std::cout << "I'm a Temporary<" << typeid(v).name() << "> object, #"
                   << counter++ << std::endl;
+    }
+
+    Temporary (Temporary&& other) noexcept // declare as noexcept so that the std library will use it
+    {
+        v = other.v;
+    }
+
+    Temporary& operator=(Temporary&& other) noexcept // declare as noexcept so that std library will use it
+    {
+        v = other.v;
+        return *this;
     }
 
     operator NumericType() const 
@@ -96,6 +109,7 @@ struct Temporary
 private:
     static int counter;
     NumericType v;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Temporary)
 };
 
 
@@ -128,7 +142,19 @@ struct Numeric
 
     template<typename ArgType>
     explicit Numeric (ArgType initValue) : value(std::make_unique<Type>(static_cast<NumericType>(initValue))) {}
-    ~Numeric() {}
+
+    Numeric (Numeric&& other) noexcept
+    {
+        value = other.value;
+    }
+
+    Numeric& operator=(Numeric&& other) noexcept
+    {
+        value = other.value;
+        return *this;
+    }
+
+    ~Numeric() = default;
 
     template<typename RhsType>
     Numeric& operator=(RhsType valueToSet) 
@@ -207,6 +233,7 @@ struct Numeric
 private:
 
     std::unique_ptr<Type> value;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Numeric)
 };
 
 /////////////////////// Definition of Point type
@@ -500,9 +527,9 @@ void part7()
 template<typename Type>
 Type cube (std::unique_ptr<Type>& arg) 
 {
-    auto v = *arg;
-    *arg = v * v * v;
-    return v;
+    auto& v = *arg;
+    *arg *= v * v;
+    return std::move (v);
 }
 
 int main()
