@@ -140,8 +140,7 @@ struct Numeric
 {
     using Type = Temporary<NumericType>;
 
-    template<typename ArgType>
-    explicit Numeric (ArgType initValue) : value(std::make_unique<Type>(static_cast<NumericType>(initValue))) {}
+    explicit Numeric (NumericType initValue) : value(std::make_unique<Type>(initValue)) {}
 
     Numeric (Numeric&& other) noexcept
     {
